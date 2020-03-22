@@ -1,0 +1,12 @@
+#CALL TEST1
+
+@END
+(END)
+0;JMP
+
+(TEST1)
+@5
+D=A
+@0
+M=D
+#RET
