@@ -4,7 +4,7 @@ A utility which adds function calling and return support to Hack ASM
 
 ## Description
 
-Currently this preprocessor supports two instructions `#call <label>` and `#ret`.  The #call instruction will store the current address and jump to the provided label.  The #ret instruction will retrieve the stored address and jump back to it.  It is capable of storing multiple addresses at once - the upper limit is 16382 deep or whenever you overwrite the stack.  Input can be provided from stdin or as a filename as the first argument.
+Currently this preprocessor supports thre instructions `#call <label>`, `#ret`, and `#include`.  The #call instruction will store the current address and jump to the provided label.  The #ret instruction will retrieve the stored address and jump back to it.  It is capable of storing multiple addresses at once - the upper limit is 16382 deep or whenever you overwrite the stack.  Input can be provided from stdin or as a filename as the first argument.  The include directive will copy and process files onto the end of the file like the C++ #include directive.  Files are added onto the end so as to not alter the program entrypoint.
 
 ## Usage
 
