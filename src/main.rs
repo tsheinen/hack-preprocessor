@@ -2,8 +2,9 @@ use std::{io, env, fs};
 use std::io::Read;
 use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg};
 use preprocessor::Preprocessable;
-
+use assembler::Assemblable;
 mod preprocessor;
+mod assembler;
 
 pub fn read_string_from_stdin() -> String {
     let mut response = String::new();
@@ -39,6 +40,8 @@ fn main() {
     if matches.is_present("Preprocess") {
         asm = asm.preprocess();
     }
-
+    if matches.is_present("Assemble") {
+        asm = asm.assemble();
+    }
     println!("{}", asm.join("\n"));
 }
