@@ -1,7 +1,7 @@
 use std::{io, env, fs};
 use std::io::Read;
-use crate::preprocessor::Preprocessor;
 use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg};
+use preprocessor::Preprocessable;
 
 mod preprocessor;
 
@@ -13,7 +13,6 @@ pub fn read_string_from_stdin() -> String {
 
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
 
     let matches = App::new(crate_name!())
         .version(crate_version!())
@@ -32,14 +31,14 @@ fn main() {
         .get_matches();
 
 
-    let mut file = match fs::read_to_string(matches.value_of("FILE").unwrap()) {
+    let mut asm = match fs::read_to_string(matches.value_of("FILE").unwrap()) {
         Ok(f) => f,
         Err(e) => panic!("Could not read file: {:?}", e),
-    };
+    }.split("\n").map(|x| x.to_string()).collect::<Vec<String>>();
 
     if matches.is_present("Preprocess") {
-        file = Preprocessor::new().process(file);
+        asm = asm.preprocess();
     }
 
-    println!("{}", file);
+    println!("{}", asm.join("\n"));
 }
