@@ -1,6 +1,6 @@
 # Hack ASM Preprocessor
 
-A utility which adds function calling and return support to Hack ASM
+A utility which adds function calling and return support to Hack ASM.  I intend on implementing an assembler and emulator for the language as well.  
 
 ## Description
 
@@ -23,7 +23,8 @@ M=D
 #RET
 ```
 
-This is pretty much the minimal functioning use scenario.  It will immediately jump to the function TEST1 - which will set @0 to 5 - and then it will jump back to right after #CALL TEST1.  It produces the ASM below.
+This is pretty much the minimal functioning use scenario.  It will immediately jump to the function TEST1 - which will set @0 to 5 - and then it will jump back to right after #CALL TEST1.  It produces the ASM below and may be invoked like so - `hack-asm -p test_cases/function_test_easy`
+
 
 ```
 @16383
