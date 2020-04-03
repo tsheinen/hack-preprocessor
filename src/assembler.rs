@@ -7,12 +7,22 @@ pub trait Assemblable {
 
 impl Assemblable for Vec<String> {
     fn assemble(self) -> Vec<String> {
-        let cleanRegex = Regex::new("(//.*$)|(\\s)").unwrap();
+        let clean_regex = Regex::new("(//.*$)|(\\s)").unwrap();
+        let label_regex = Regex::new("\\(.*\\)").unwrap();
         let mut labels: HashMap<String, i32> = HashMap::new();
         let mut count = 15;
         self.iter()
-            .map(|x| cleanRegex.replace_all(x, "").to_string())
+            .map(|x| clean_regex.replace_all(x, "").to_string())
             .filter(|x| x != "")
+            .enumerate()
+            .filter_map(|(_index, x)| {
+                if label_regex.is_match(&x) {
+                    let _key = &x[1..x.len()];
+
+
+                    None
+                } else { Some(x) }
+            })
             .map(|x| if &x[0..1] == "@" && !(&x[1..]).parse::<u64>().is_ok() { // TODO make a first run through to collapse () labels into numbers
                 let index = match labels.get(&x[1..]) {
                     Some(T) => *T,
@@ -25,7 +35,7 @@ impl Assemblable for Vec<String> {
                 format!("@{}", index)
             } else { x })
             .map(|x|
-                if (&x[0..1] == "@") {
+                if &x[0..1] == "@" {
                     format!("@{}", match &x[1..] {
                         "SP" => "0",
                         "LCL" => "@",

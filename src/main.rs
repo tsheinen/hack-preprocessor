@@ -19,9 +19,9 @@ fn main() {
         .version(crate_version!())
         .author(crate_authors!())
         .about(crate_description!())
-        .arg(Arg::with_name("Assemble")
-            .short("a")
-            .help("Assemble Hack ASM into machine code"))
+        // .arg(Arg::with_name("Assemble")
+        //     .short("a")
+        //     .help("Assemble Hack ASM into machine code"))
         .arg(Arg::with_name("Preprocess")
             .short("p")
             .help("Preprocess Hack ASM code"))
@@ -34,7 +34,7 @@ fn main() {
 
     let mut asm = match fs::read_to_string(matches.value_of("FILE").unwrap()) {
         Ok(f) => f,
-        Err(e) => panic!("Could not read file: {:?}", e),
+        Err(e) => panic!("Could not read file {:?}: {:?}", matches.value_of("FILE").unwrap(), e),
     }.split("\n").map(|x| x.to_string()).collect::<Vec<String>>();
 
     if matches.is_present("Preprocess") {

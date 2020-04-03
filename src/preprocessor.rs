@@ -38,7 +38,7 @@ impl Preprocessable for Vec<String> {
 
         for i in included_files.clone() {
             output += &format!("// INCLUDED FILE {}", i);
-            output += &fs::read_to_string(i).expect("Could not read file").split('\n').map(|x| process_line(&mut included_files, x)).collect::<Vec<String>>().join("\n");
+            output += &fs::read_to_string(&i).expect(&format!("Could not read file {:?}", i)).split('\n').map(|x| process_line(&mut included_files, x)).collect::<Vec<String>>().join("\n");
         }
         output.split("\n").map(|x| x.to_string()).collect::<Vec<String>>()
     }
