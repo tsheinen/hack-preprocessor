@@ -13,14 +13,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build
+    - name: Build release
+      run: cargo build --release --verbose
+    - name: Build debug
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
-    - name: Upload artifact
+    - name: Upload debug artifact
       uses: actions/upload-artifact@v1.0.0
       with:
         # Artifact name
-        name: hack-asm
+        name: hack-asm-debug
         # Directory containing files to upload
         path: target/debug/hack-asm
+    - name: Upload release artifact
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        # Artifact name
+        name: hack-asm-release
+        # Directory containing files to upload
+        path: target/release/hack-asm
