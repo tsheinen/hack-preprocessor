@@ -1,6 +1,6 @@
 use crate::types::*;
 use nom::branch::alt;
-use nom::bytes::complete::{tag, take, take_until, take_while};
+use nom::bytes::complete::{tag, tag_no_case, take, take_until, take_while, take_while1};
 use nom::combinator::opt;
 use nom::error::{ErrorKind, ParseError, VerboseError, VerboseErrorKind};
 use nom::multi::many1;
@@ -58,15 +58,25 @@ fn parse_computation(text: &str) -> IResult<&str, Computation, VerboseError<&str
 }
 
 fn parse_jmp(text: &str) -> IResult<&str, Jump, VerboseError<&str>> {
-    let (text, jmp) = take_while(|ch| ch != '\n')(text)?;
+    let original_text = text;
+    let (text, jmp) = opt(alt((
+        tag_no_case("JGT"),
+        tag_no_case("JEQ"),
+        tag_no_case("JGE"),
+        tag_no_case("JLT"),
+        tag_no_case("JNE"),
+        tag_no_case("JLE"),
+        tag_no_case("JMP"),
+    )))(text)?;
+    let (text, between) = opt(take_while1(|ch| ch != '\n'))(text)?;
     let (text, _) = opt(tag("\n"))(text)?;
-    if Jump::from(jmp) == Jump::None {
+    if between.is_none() && jmp.is_some() && Jump::from(jmp.unwrap()) != Jump::None {
+        Ok((text, jmp.unwrap().into()))
+    } else {
         Err(nom::Err::Error(VerboseError::from_error_kind(
-            text,
+            original_text,
             ErrorKind::Char,
         ))) // TODO fix this error
-    } else {
-        Ok((text, jmp.into()))
     }
 }
 
@@ -91,8 +101,9 @@ pub fn parse(asm: String) -> Vec<Instruction> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse_a, parse_jmp};
-    use crate::types::{*};
+    use crate::parser::{parse_a, parse_dest, parse_jmp};
+    use crate::types::*;
+    use nom::error::{ErrorKind, ParseError, VerboseError};
 
     #[test]
     fn parses_a() {
@@ -116,6 +127,21 @@ mod tests {
 
         assert_eq!(parse_jmp("JmP"), Ok(("", Jump::JMP)));
         assert_eq!(parse_jmp("jmp"), Ok(("", Jump::JMP)));
+
+        assert_eq!(
+            parse_jmp("a"),
+            Err(nom::Err::Error(VerboseError::from_error_kind(
+                "a",
+                ErrorKind::Char,
+            )))
+        );
+        assert_eq!(
+            parse_jmp("jmpx"),
+            Err(nom::Err::Error(VerboseError::from_error_kind(
+                "jmpx",
+                ErrorKind::Char,
+            )))
+        );
 
         assert_eq!(parse_jmp("JMP\n"), Ok(("", Jump::JMP)));
         assert_eq!(parse_jmp("JMP\n\n\n"), Ok(("\n\n", Jump::JMP)));
