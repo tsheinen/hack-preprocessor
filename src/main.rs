@@ -1,6 +1,5 @@
-use assembler::Assemblable;
 use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg};
-use preprocessor::Preprocessable;
+
 use std::io::Read;
 use std::{env, fs, io};
 mod assembler;
@@ -36,7 +35,7 @@ fn main() {
         )
         .get_matches();
 
-    let asm = match fs::read_to_string(matches.value_of("FILE").unwrap()) {
+    let _asm = match fs::read_to_string(matches.value_of("FILE").unwrap()) {
         Ok(f) => f,
         Err(e) => panic!(
             "Could not read file {:?}: {:?}",

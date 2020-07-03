@@ -1,12 +1,11 @@
 use crate::types::*;
 use nom::branch::alt;
-use nom::bytes::complete::{tag, tag_no_case, take, take_until, take_while, take_while1};
+use nom::bytes::complete::{tag, tag_no_case, take, take_while, take_while1};
 use nom::combinator::opt;
-use nom::error::{ErrorKind, ParseError, VerboseError, VerboseErrorKind};
+use nom::error::{ErrorKind, ParseError, VerboseError};
 use nom::multi::many1;
 use nom::IResult;
-use regex::Regex;
-use std::collections::HashMap;
+
 fn parse_a(text: &str) -> IResult<&str, Instruction, VerboseError<&str>> {
     let (text, _) = tag("@")(text)?;
     let (text, location) = take_while(|ch| ch != '\n')(text)?;
@@ -22,7 +21,6 @@ fn parse_dest(text: &str) -> IResult<&str, Vec<Register>, VerboseError<&str>> {
 
 fn parse_computation(text: &str) -> IResult<&str, Computation, VerboseError<&str>> {
     let (text, first_char) = take(1usize)(text)?;
-
     let op = Operation::from(first_char);
     if op != Operation::None {
         let (text, second_char) = take(1usize)(text)?;
@@ -38,9 +36,10 @@ fn parse_computation(text: &str) -> IResult<&str, Computation, VerboseError<&str
         }
     } else {
         let lhs = Source::from(first_char);
-        let end = alt((tag(";"), tag("\n")))(text);
-        if let Ok(_) = end {
-            let (text, _) = end?;
+        let end = opt(take_while1(|ch| ch != ';' && ch != '\n'))(text)?;
+
+        if end.1.unwrap_or("").len() == 0 {
+            let (text, _) = opt(alt((tag(";"), tag("\n"))))(text)?;
             Ok((
                 text,
                 Computation::Computation(lhs, Source::None, Operation::None),
@@ -48,6 +47,7 @@ fn parse_computation(text: &str) -> IResult<&str, Computation, VerboseError<&str
         } else {
             let (text, second_char) = take(1usize)(text)?;
             let (text, third_char) = take(1usize)(text)?;
+            let (text, _) = opt(alt((tag(";"), tag("\n"))))(text)?;
             Ok((
                 text,
                 Computation::Computation(lhs, third_char.into(), second_char.into()),
@@ -92,13 +92,13 @@ fn parse_instruction(text: &str) -> IResult<&str, Instruction, VerboseError<&str
     Ok((text, instr))
 }
 
-pub fn parse(asm: String) -> Vec<Instruction> {
+pub fn parse(_asm: String) -> Vec<Instruction> {
     vec![Instruction::A(Location::Address(0))]
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse_a, parse_dest, parse_jmp};
+    use crate::parser::{parse_a, parse_c, parse_computation, parse_dest, parse_jmp};
     use crate::types::*;
     use nom::error::{ErrorKind, ParseError, VerboseError};
 
@@ -137,13 +137,192 @@ mod tests {
         assert_eq!(parse_dest("M"), Ok(("", vec![Register::M])));
 
         assert_eq!(parse_dest("AD"), Ok(("", vec![Register::A, Register::D])));
-        assert_eq!(parse_dest("ADM"), Ok(("", vec![Register::A, Register::D, Register::M])));
-        assert_eq!(parse_dest("MAD"), Ok(("", vec![Register::M, Register::A, Register::D])));
+        assert_eq!(
+            parse_dest("ADM"),
+            Ok(("", vec![Register::A, Register::D, Register::M]))
+        );
+        assert_eq!(
+            parse_dest("MAD"),
+            Ok(("", vec![Register::M, Register::A, Register::D]))
+        );
 
         assert_eq!(parse_dest("M="), Ok(("", vec![Register::M])));
         assert_eq!(parse_dest("M=a"), Ok(("a", vec![Register::M])));
+    }
 
+    #[test]
+    fn parses_comp() {
+        assert_eq!(
+            parse_computation("0"),
+            Ok((
+                "",
+                Computation::Computation(Source::Zero, Source::None, Operation::None)
+            ))
+        );
+        assert_eq!(
+            parse_computation("0\n"),
+            Ok((
+                "",
+                Computation::Computation(Source::Zero, Source::None, Operation::None)
+            ))
+        );
+        assert_eq!(
+            parse_computation("0;"),
+            Ok((
+                "",
+                Computation::Computation(Source::Zero, Source::None, Operation::None)
+            ))
+        );
 
+        assert_eq!(
+            parse_computation("1"),
+            Ok((
+                "",
+                Computation::Computation(Source::One, Source::None, Operation::None)
+            ))
+        );
+        assert_eq!(
+            parse_computation("A"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::A),
+                    Source::None,
+                    Operation::None
+                )
+            ))
+        );
+        assert_eq!(
+            parse_computation("D"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::D),
+                    Source::None,
+                    Operation::None
+                )
+            ))
+        );
+        assert_eq!(
+            parse_computation("M"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::M),
+                    Source::None,
+                    Operation::None
+                )
+            ))
+        );
+
+        assert_eq!(
+            parse_computation("-1"),
+            Ok((
+                "",
+                Computation::Computation(Source::One, Source::None, Operation::Negative)
+            ))
+        );
+        assert_eq!(
+            parse_computation("-A"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::A),
+                    Source::None,
+                    Operation::Negative
+                )
+            ))
+        );
+        assert_eq!(
+            parse_computation("-D"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::D),
+                    Source::None,
+                    Operation::Negative
+                )
+            ))
+        );
+        assert_eq!(
+            parse_computation("-M"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::M),
+                    Source::None,
+                    Operation::Negative
+                )
+            ))
+        );
+
+        assert_eq!(
+            parse_computation("!A"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::A),
+                    Source::None,
+                    Operation::Not
+                )
+            ))
+        );
+
+        assert_eq!(
+            parse_computation("D+1"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::D),
+                    Source::One,
+                    Operation::Add
+                )
+            ))
+        );
+        assert_eq!(
+            parse_computation("D-1"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::D),
+                    Source::One,
+                    Operation::Negative
+                )
+            ))
+        ); // TODO need to differentiate between negative and subtraction
+        assert_eq!(
+            parse_computation("D+A"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::D),
+                    Source::Register(Register::A),
+                    Operation::Add
+                )
+            ))
+        );
+        assert_eq!(
+            parse_computation("D&A"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::D),
+                    Source::Register(Register::A),
+                    Operation::And
+                )
+            ))
+        );
+        assert_eq!(
+            parse_computation("D|A"),
+            Ok((
+                "",
+                Computation::Computation(
+                    Source::Register(Register::D),
+                    Source::Register(Register::A),
+                    Operation::Or
+                )
+            ))
+        );
     }
 
     #[test]
@@ -176,5 +355,55 @@ mod tests {
 
         assert_eq!(parse_jmp("JMP\n"), Ok(("", Jump::JMP)));
         assert_eq!(parse_jmp("JMP\n\n\n"), Ok(("\n\n", Jump::JMP)));
+    }
+
+    #[test]
+    fn parses_c() {
+        assert_eq!(
+            parse_c("D=A+1;JMP"),
+            Ok((
+                "",
+                Instruction::C(
+                    vec![Register::D],
+                    Computation::Computation(
+                        Source::Register(Register::A),
+                        Source::One,
+                        Operation::Add
+                    ),
+                    Jump::JMP
+                )
+            ))
+        );
+        assert_eq!(
+            parse_c("D=A+1;JMP\n"),
+            Ok((
+                "",
+                Instruction::C(
+                    vec![Register::D],
+                    Computation::Computation(
+                        Source::Register(Register::A),
+                        Source::One,
+                        Operation::Add
+                    ),
+                    Jump::JMP
+                )
+            ))
+        );
+
+        assert_eq!(
+            parse_c("D=A+1;JMP\n\n"),
+            Ok((
+                "\n",
+                Instruction::C(
+                    vec![Register::D],
+                    Computation::Computation(
+                        Source::Register(Register::A),
+                        Source::One,
+                        Operation::Add
+                    ),
+                    Jump::JMP
+                )
+            ))
+        );
     }
 }
