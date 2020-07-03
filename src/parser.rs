@@ -58,7 +58,16 @@ fn parse_computation(text: &str) -> IResult<&str, Computation, VerboseError<&str
 }
 
 fn parse_jmp(text: &str) -> IResult<&str, Jump, VerboseError<&str>> {
-    Ok((text, text.into()))
+    let (text, jmp) = take_while(|ch| ch != '\n')(text)?;
+    let (text, _) = opt(tag("\n"))(text)?;
+    if Jump::from(jmp) == Jump::None {
+        Err(nom::Err::Error(VerboseError::from_error_kind(
+            text,
+            ErrorKind::Char,
+        ))) // TODO fix this error
+    } else {
+        Ok((text, jmp.into()))
+    }
 }
 
 fn parse_c(text: &str) -> IResult<&str, Instruction, VerboseError<&str>> {
@@ -82,7 +91,7 @@ pub fn parse(asm: String) -> Vec<Instruction> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::parse_a;
+    use crate::parser::{parse_a, parse_jmp};
     use crate::types::{*};
 
     #[test]
@@ -94,4 +103,22 @@ mod tests {
         assert_eq!(parse_a("@test\n"), Ok(("", Instruction::A(Location::Label("test".into())))));
         assert_eq!(parse_a("@test\n\n\n"), Ok(("\n\n", Instruction::A(Location::Label("test".into())))));
     }
+
+    #[test]
+    fn parses_jump() {
+        assert_eq!(parse_jmp("JGT"), Ok(("", Jump::JGT)));
+        assert_eq!(parse_jmp("JEQ"), Ok(("", Jump::JEQ)));
+        assert_eq!(parse_jmp("JGE"), Ok(("", Jump::JGE)));
+        assert_eq!(parse_jmp("JLT"), Ok(("", Jump::JLT)));
+        assert_eq!(parse_jmp("JNE"), Ok(("", Jump::JNE)));
+        assert_eq!(parse_jmp("JLE"), Ok(("", Jump::JLE)));
+        assert_eq!(parse_jmp("JMP"), Ok(("", Jump::JMP)));
+
+        assert_eq!(parse_jmp("JmP"), Ok(("", Jump::JMP)));
+        assert_eq!(parse_jmp("jmp"), Ok(("", Jump::JMP)));
+
+        assert_eq!(parse_jmp("JMP\n"), Ok(("", Jump::JMP)));
+        assert_eq!(parse_jmp("JMP\n\n\n"), Ok(("\n\n", Jump::JMP)));
+    }
+
 }

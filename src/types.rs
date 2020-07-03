@@ -92,7 +92,7 @@ pub enum Jump {
 
 impl From<&str> for Jump {
     fn from(val: &str) -> Self {
-        return match val {
+        return match val.to_ascii_uppercase().as_ref() {
             "JGT" => Jump::JGT,
             "JEQ" => Jump::JEQ,
             "JGE" => Jump::JGE,
