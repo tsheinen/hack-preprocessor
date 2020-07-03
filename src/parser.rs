@@ -15,8 +15,7 @@ fn parse_a(text: &str) -> IResult<&str, Instruction, VerboseError<&str>> {
 }
 
 fn parse_dest(text: &str) -> IResult<&str, Vec<Register>, VerboseError<&str>> {
-    let (text, dests): (&str, Vec<&str>) =
-        many1(alt((tag("A"), tag("D"), tag("D"))))(text)?;
+    let (text, dests): (&str, Vec<&str>) = many1(alt((tag("A"), tag("D"), tag("M"))))(text)?;
     let (text, _) = opt(tag("="))(text)?;
     Ok((text, dests.into_iter().map(|x| x.into()).collect()))
 }
@@ -81,7 +80,6 @@ fn parse_jmp(text: &str) -> IResult<&str, Jump, VerboseError<&str>> {
 }
 
 fn parse_c(text: &str) -> IResult<&str, Instruction, VerboseError<&str>> {
-
     let (text, dest) = parse_dest(text)?;
     let (text, computation) = parse_computation(text)?;
     let (text, jmp) = parse_jmp(text)?;
@@ -90,7 +88,6 @@ fn parse_c(text: &str) -> IResult<&str, Instruction, VerboseError<&str>> {
 }
 
 fn parse_instruction(text: &str) -> IResult<&str, Instruction, VerboseError<&str>> {
-
     let (text, instr) = alt((parse_a, parse_c))(text)?;
     Ok((text, instr))
 }
@@ -107,12 +104,46 @@ mod tests {
 
     #[test]
     fn parses_a() {
-        assert_eq!(parse_a("@1"), Ok(("", Instruction::A(Location::Address(1)))));
-        assert_eq!(parse_a("@64"), Ok(("", Instruction::A(Location::Address(64)))));
-        assert_eq!(parse_a("@test"), Ok(("", Instruction::A(Location::Label("test".into())))));
-        assert_eq!(parse_a("@TeSt"), Ok(("", Instruction::A(Location::Label("TeSt".into())))));
-        assert_eq!(parse_a("@test\n"), Ok(("", Instruction::A(Location::Label("test".into())))));
-        assert_eq!(parse_a("@test\n\n\n"), Ok(("\n\n", Instruction::A(Location::Label("test".into())))));
+        assert_eq!(
+            parse_a("@1"),
+            Ok(("", Instruction::A(Location::Address(1))))
+        );
+        assert_eq!(
+            parse_a("@64"),
+            Ok(("", Instruction::A(Location::Address(64))))
+        );
+        assert_eq!(
+            parse_a("@test"),
+            Ok(("", Instruction::A(Location::Label("test".into()))))
+        );
+        assert_eq!(
+            parse_a("@TeSt"),
+            Ok(("", Instruction::A(Location::Label("TeSt".into()))))
+        );
+        assert_eq!(
+            parse_a("@test\n"),
+            Ok(("", Instruction::A(Location::Label("test".into()))))
+        );
+        assert_eq!(
+            parse_a("@test\n\n\n"),
+            Ok(("\n\n", Instruction::A(Location::Label("test".into()))))
+        );
+    }
+
+    #[test]
+    fn parses_dest() {
+        assert_eq!(parse_dest("A"), Ok(("", vec![Register::A])));
+        assert_eq!(parse_dest("D"), Ok(("", vec![Register::D])));
+        assert_eq!(parse_dest("M"), Ok(("", vec![Register::M])));
+
+        assert_eq!(parse_dest("AD"), Ok(("", vec![Register::A, Register::D])));
+        assert_eq!(parse_dest("ADM"), Ok(("", vec![Register::A, Register::D, Register::M])));
+        assert_eq!(parse_dest("MAD"), Ok(("", vec![Register::M, Register::A, Register::D])));
+
+        assert_eq!(parse_dest("M="), Ok(("", vec![Register::M])));
+        assert_eq!(parse_dest("M=a"), Ok(("a", vec![Register::M])));
+
+
     }
 
     #[test]
@@ -146,5 +177,4 @@ mod tests {
         assert_eq!(parse_jmp("JMP\n"), Ok(("", Jump::JMP)));
         assert_eq!(parse_jmp("JMP\n\n\n"), Ok(("\n\n", Jump::JMP)));
     }
-
 }
