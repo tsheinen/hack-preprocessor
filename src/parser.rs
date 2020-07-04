@@ -3,7 +3,7 @@ use nom::branch::alt;
 use nom::bytes::complete::{tag, tag_no_case, take, take_while, take_while1};
 use nom::combinator::opt;
 use nom::error::{ErrorKind, ParseError, VerboseError};
-use nom::multi::many1;
+use nom::multi::{many0, many1};
 use nom::IResult;
 
 fn parse_a(text: &str) -> IResult<&str, Instruction, VerboseError<&str>> {
@@ -79,6 +79,19 @@ fn parse_jmp(text: &str) -> IResult<&str, Jump, VerboseError<&str>> {
     }
 }
 
+fn parse_macro(text: &str) -> IResult<&str, Macro, VerboseError<&str>> {
+    let (text, _) = tag("#")(text)?;
+    let (text, directive) = alt((
+        tag_no_case("call"),
+        tag_no_case("ret"),
+        tag_no_case("include"),
+    ))(text)?;
+    let (text, _) = many0(alt((tag(" "), tag("\t"))))(text)?;
+    let (text, arg) = take_while(|ch| ch != '\n' && ch != ' ' && ch != '\t')(text)?;
+    let (text, _) = many0(alt((tag(" "), tag("\t"), tag("\n"))))(text)?;
+    Ok((text, Macro::from((directive, arg))))
+}
+
 fn parse_c(text: &str) -> IResult<&str, Instruction, VerboseError<&str>> {
     let (text, dest) = parse_dest(text)?;
     let (text, computation) = parse_computation(text)?;
@@ -98,7 +111,7 @@ pub fn parse(_asm: String) -> Vec<Instruction> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse_a, parse_c, parse_computation, parse_dest, parse_jmp};
+    use crate::parser::{parse_a, parse_c, parse_computation, parse_dest, parse_jmp, parse_macro};
     use crate::types::*;
     use nom::error::{ErrorKind, ParseError, VerboseError};
 
@@ -404,6 +417,28 @@ mod tests {
                     Jump::JMP
                 )
             ))
+        );
+    }
+
+    #[test]
+    fn parses_macro() {
+        assert_eq!(
+            parse_macro("#call func1"),
+            Ok(("", Macro::Call("func1".into())))
+        );
+        assert_eq!(
+            parse_macro("#call func1 \n"),
+            Ok(("", Macro::Call("func1".into())))
+        );
+
+        assert_eq!(
+            parse_macro("#ret\n"),
+            Ok(("", Macro::Return))
+        );
+
+        assert_eq!(
+            parse_macro("#include file1\n"),
+            Ok(("", Macro::Include("file1".into())))
         );
     }
 }

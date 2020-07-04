@@ -111,7 +111,27 @@ pub enum Computation {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Macro {
+    Call(String),
+    Return,
+    Include(String),
+    None,
+}
+
+impl From<(&str, &str)> for Macro {
+    fn from(val: (&str, &str)) -> Self {
+        return match (val.0.to_ascii_lowercase().as_ref(), val.1) {
+            ("call", arg) => Macro::Call(arg.into()),
+            ("ret", _) => Macro::Return,
+            ("include", arg) => Macro::Include(arg.into()),
+            _ => Macro::None,
+        };
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instruction {
     A(Location),
     C(Vec<Register>, Computation, Jump),
+    Macro(Macro),
 }
